@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=DJ Live Streamer
+GenericName=Directo de sesiones DJ
+Comment=Emite la webcam y la entrada de línea a Twitch y YouTube y graba el audio en FLAC
+Exec=djlivestreamer
+Icon=media-record
+Terminal=false
+Categories=AudioVideo;Audio;Video;Recorder;
+Keywords=twitch;youtube;stream;directo;dj;flac;
