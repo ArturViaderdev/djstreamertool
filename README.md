@@ -1,5 +1,83 @@
 # DJ Live Streamer
 
+*[Versión en español más abajo](#dj-live-streamer-español)*
+
+A desktop app (Qt) for live-streaming DJ sets to **Twitch and YouTube at the same time**, using the webcam as the picture and the **line input** as the sound, while **recording the audio to FLAC and/or MP3** on disk.
+
+- Camera preview **not mirrored** (exactly as it goes out on the stream).
+- Stereo **peak meter** (IEC scale, dBFS) with peak hold, max peak and a **SATURA** (clipping) light that stays on until you click it.
+- Video encoded with **NVENC** (reused from gamecapture: direct NVENC with API 12.0, independent of the distro's FFmpeg). Falls back to x264 if there is no NVIDIA GPU.
+- One encoder per distinct bitrate, so Twitch and YouTube can use different bitrates.
+- If a destination drops, it **retries every 5 s** without affecting the other one or the recording. A keyframe is forced on reconnect so there is no waiting.
+- Recording is independent of the stream. You can record **FLAC and MP3 at the same time** (same name: `djset_date.flac` + `djset_date.mp3`), or record without streaming: just untick Twitch and YouTube.
+- MP3 uses LAME at its highest-quality setting: 320 kbps CBR (default), VBR V0, 256 or 192 kbps.
+
+## Installation (Debian)
+
+```sh
+./install.sh --deps     # dependencies + build + install to /usr/local
+```
+
+It does not install any `nvidia-*` package: CUDA and NVENC are loaded from the driver you already have (driver >= 520).
+Afterwards it shows up in the KDE menu as **DJ Live Streamer** (or run `djlivestreamer`).
+
+## Usage
+
+The interface is in Spanish; the original label is given in quotes, followed by its meaning.
+
+1. **«Destinos»** (destinations): paste your Twitch and YouTube stream keys (the servers are already filled in).
+2. **«Cámara y vídeo»** (camera and video): pick the camera and the mode, e.g. `1280×720 @ 60 fps (MJPEG)`. 60 fps is optional: if you pick a 30 fps mode, the stream runs at 30.
+3. **«Audio y grabación»** (audio and recording): pick the line input. It shows the format the input runs at (e.g. `s32le, 2 canales, 48000 Hz`).
+4. Set the level in KDE (input volume) while watching the meter: peaks below −3 dB, and the SATURA light should not come on.
+5. Tick Twitch, YouTube, «Grabar FLAC» (record FLAC) and/or «Grabar MP3» (record MP3) and press **EMPEZAR** (start). To finish, press **TERMINAR** (stop): it asks for confirmation so a stray click can't end the set.
+
+To test without going live: tick «Personalizado» (custom) and enter `~/Vídeos/prueba.flv` as the URL.
+
+## About sample rates (44.1 / 48 kHz)
+
+- **Twitch** accepts 44.1 and 48 kHz. **YouTube** recommends 44.1 kHz for stereo and also accepts 48 kHz.
+- That's why the app **captures at your input's native rate** and uses that same rate for both the stream and the FLAC. **Nothing gets resampled** and no quality is lost.
+- You can force 44.1 kHz for the FLAC (e.g. to make a CD). If the input runs at 48 kHz, it is then resampled with SoX at maximum quality (inaudible), but it is no longer an exact copy.
+- With PipeWire, the input usually runs at 48 kHz. If you want it to really run at 44.1 kHz (without PipeWire resampling), add `default.clock.allowed-rates = [ 44100 48000 ]` in `~/.config/pipewire/pipewire.conf.d/` and set the sound card to 44.1 kHz in KDE. The app detects the rate and adapts on its own.
+- **16 bits**: if the source has more resolution, triangular dither is added. If the source is already 16-bit and is not resampled, the copy is exact.
+- The **MP3** uses the same rate as the FLAC. The MP3 format does not support more than 48 kHz: if the input runs at 96 kHz, the MP3 is recorded at 48 kHz.
+
+## Sync
+
+The sound card's clock is the master: the audio is never altered. Video timestamps are continuously adjusted to that clock, so audio and picture don't drift apart over sessions lasting hours.
+If you notice a constant offset (usually the webcam lags a few milliseconds behind), correct it with «Sincronía imagen/sonido» (picture/sound sync): a positive value delays the sound.
+
+## Files
+
+- Recordings: `~/Música/Sesiones DJ/djset_YYYY-MM-DD_HH-MM-SS.flac` / `.mp3` (folder is configurable). Flushed to disk every 2 s.
+- Settings (including the stream keys, with 600 permissions): `~/.config/djlivestreamer/djlivestreamer.conf`
+- Log: `~/.local/state/djlivestreamer/djlivestreamer.log` (also in the «Registro» (log) tab).
+
+## Testing without hardware
+
+```sh
+cmake -S . -B build -DBUILD_TESTS=ON && cmake --build build
+./build/pipeline_test 20 48000 150   # 20 s, 48 kHz input, sound card clock 150 ppm fast
+```
+
+It writes to `/tmp/djt/` two FLV files (one of them "connects" after 4 s, to test reconnection), two FLAC files and two MP3 files.
+
+## Layout
+
+| File | What it does |
+|---|---|
+| `src/camera.*` | V4L2 (YUYV/MJPEG), mode list, crop to 16:9 and conversion to BGRA with swscale |
+| `src/audio.*` | PulseAudio/PipeWire capture at the native rate, input list, peak and clipping measurement |
+| `src/encoder.*` | Direct NVENC (from gamecapture) and x264 fallback |
+| `src/streamer.*` | AAC, clock adjustment and RTMP destinations with reconnection |
+| `src/audiorecorder.*` | FLAC / MP3 recording, each in its own thread |
+| `src/widgets.*` | Preview and level meter |
+| `src/mainwindow.*` | User interface |
+
+---
+
+# DJ Live Streamer (español)
+
 Programa con interfaz gráfica (Qt) para emitir en directo sesiones de DJ a **Twitch y YouTube a la vez** con la webcam como imagen y la **entrada de línea** como sonido, y que **graba el audio en FLAC y/o MP3** en el disco al mismo tiempo.
 
 - Vista previa de la cámara **sin espejo** (tal cual sale en el directo).
